@@ -1,79 +1,87 @@
-[![Review Assignment Due Date](https://classroom.github.com/assets/deadline-readme-button-22041afd0340ce965d47ae6ef1cefeee28c7c493a6346c4f15d667ab976d596c.svg)](https://classroom.github.com/a/DtxdB3_i)
-## 🧠 Task Overview
+# Transfer Learning — Food11 Classification
 
-You will apply **Transfer Learning** using **EfficientNet** models with two approaches:  
-1. **Feature Extraction**  
-2. **Fine-tuning**
+Applying transfer learning using **EfficientNetB0** on the Food11 dataset with two approaches: Feature Extraction and Fine-Tuning. All experiments tracked with MLflow on DagsHub.
 
-⚠️ This task **must be completed in Google Colab or a cloud-based environment**. Training deep models like EfficientNet on local machines without GPU/TPU is highly inefficient and may lead to failed or incomplete experiments.
+---
 
+## Dataset
+[Food11 Image Dataset — Kaggle](https://www.kaggle.com/datasets/trolukovich/food11-image-dataset)
 
+| Split | Images |
+|---|---|
+| Train | 9,866 |
+| Validation | 3,430 |
+| Test | 3,347 |
 
-## 📁 Dataset
+**Classes (11):** Bread, Dairy product, Dessert, Egg, Fried food, Meat, Noodles-Pasta, Rice, Seafood, Soup, Vegetable-Fruit
 
-Dataset is already downloaded and loaded in the notebook. Preprocess as needed for training.
+> Dataset is imbalanced — Rice has the fewest samples (280 train) while Dessert and Soup have the most (1,500 train each).
 
+---
 
+## Model Architecture
 
-## 🧪 Experiments
+| Layer | Details |
+|---|---|
+| Base | EfficientNetB0 (ImageNet pretrained) |
+| Pooling | GlobalAveragePooling2D |
+| Regularization | Dropout(0.3) |
+| Output | Dense(11, softmax) |
 
-### 1️⃣ Feature Extraction  
-- freeze all base layers  
-- train only the classification head  
+- **Loss:** Sparse Categorical Crossentropy
+- **Optimizer:** Adam
+- **Preprocessing:** EfficientNet `preprocess_input`
+- **Augmentation:** RandomFlip, RandomRotation, RandomZoom (train only)
 
-### 2️⃣ Fine-tuning  
-- unfreeze last layers  
-- retrain full or partial base  
+---
 
-You can enhance fine-tuning with these techniques:
+## Experiment Summary
 
-- **Unfreeze only last *n* layers**  
-  gradually increase trainable layers instead of full base model
+| Experiment | Approach | LR | Val Accuracy | Test Accuracy |
+|---|---|---|---|---|
+| Exp 1 | Feature Extraction (head only) | 1e-3 | 88.08% | 90.44% |
+| Exp 2 | Fine-Tuning (last 20 layers) | 1e-5 | 89.68% | 91.60% |
 
-- **Gradual unfreezing**  
-  unfreeze layers one block at a time across training epochs
+---
 
-- **Layer-wise learning rate decay**  
-  assign smaller LR to earlier layers and higher LR to deeper layers
+## Plots
 
-For each:
-- document model version  
-- include training/validation metrics  
-- write your analysis
+### Experiment 1 — Feature Extraction
+![Exp1 Curves](plots/Experiment_1_Feature_Extraction.png)
+![Exp1 Confusion Matrix](plots/exp1_confusion_matrix.png)
 
+### Experiment 2 — Fine-Tuning
+![Exp2 Curves](plots/Experiment_2_Fine_Tuning.png)
+![Exp2 Confusion Matrix](plots/exp2_confusion_matrix.png)
 
+---
 
-## 🧬 Bonus (Optional)
+## Observations
 
-- use **DagsHub** to upload and manage dataset in a cloud bucket  
-- track all runs using **MLflow**:
-  - versioned experiments  
-  - parameters, metrics, artifacts  
+### Feature Extraction vs Fine-Tuning
+Fine-tuning outperformed feature extraction by **~1.6%** on val accuracy and **~1.2%** on test accuracy.
+Unfreezing the last 20 layers allowed the model to better adapt pretrained features to the Food11 domain.
 
-## 📝 README Must Include:
+### Generalization
+Both models generalized well — test accuracy exceeded val accuracy in both experiments,
+confirming clean data splits with no leakage between train, val, and test sets.
 
-- experiment summary  
-- plots for metrics  
-- observations on:
-  - feature extract vs fine-tune  
-  - generalization, convergence, overfitting 
+### Convergence
+Feature extraction converged steadily across 20 epochs with only the classification head trained.
+Fine-tuning required more epochs to stabilize — accuracy dropped to 74% at epoch 1 due to newly unfrozen layers adapting, then improved consistently throughout training.
 
-## 🔗 Helpful Links
+### Overfitting
+No significant overfitting observed in either experiment.
+Train and val curves remained within 1-2% of each other throughout,
+supported by **Dropout(0.3)** and **ReduceLROnPlateau** callbacks.
 
-- 📚 EfficientNet models in Keras:  
-  https://keras.io/api/applications/efficientnet/
+### Weakest Class
+Dairy product showed the lowest recall (0.75) in both experiments,
+likely due to having the fewest training samples (429 train, 148 test).
 
-- 🎓 Transfer Learning guide (Keras):  
-  https://keras.io/guides/transfer_learning/
+---
 
-- 📦 MLflow for experiment tracking:  
-  https://www.mlflow.org/docs/latest/index.html
+## MLflow Tracking
+All runs tracked on DagsHub with parameters, metrics, and artifacts:
 
-- ☁️ DVC + DagsHub integration:  
-  https://dagshub.com/docs/integrations/dvc/
-
-- 🧑‍🍳 How to freeze/unfreeze layers in Keras:  
-  https://keras.io/getting_started/faq/#how-can-i-freeze-layers-in-a-model
-
-- 📈 Using callbacks in Keras (e.g. EarlyStopping, ReduceLROnPlateau):  
-  https://keras.io/api/callbacks/
+[📊 View Experiments on DagsHub](https://dagshub.com/Shamah1/food11-transfer-learning.mlflow/#/experiments/0)
